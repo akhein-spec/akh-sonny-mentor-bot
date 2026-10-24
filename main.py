@@ -19,20 +19,22 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 # Initialize Gemini Client
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# --- Flask Keep-Alive Server for Render Web Service ---
+# --- Flask Web Server for Render Port Binding ---
 app_flask = Flask('')
 
 @app_flask.route('/')
 def home():
-    return "Bot is running!"
+    return "Bot is running and alive!"
 
 def run():
-    app_flask.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    port = int(os.environ.get('PORT', 8080))
+    app_flask.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
+    t.daemon = True
     t.start()
-# -----------------------------------------------------
+# ------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
@@ -43,7 +45,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     
-    # Mentor Persona System Prompt
     prompt = f"""
     You are an expert Online Business & Freelancing Mentor.
     Respond in friendly, encouraging Burmese.
@@ -60,11 +61,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text("တောင်းပန်ပါတယ်၊ အမှားတစ်ခု ဖြစ်သွားလို့ပါ။ နောက်တစ်ကြိမ် ပြန်ကြိုးစားကြည့်ပေးပါနော်။")
 
-if __name__ == '__main__':
-    # 1. Render အတွက် Flask Server ကို စတင်ပေးခြင်း
+def main():
+    # Start Flask server first to satisfy Render port binding
     keep_alive()
     
-    # 2. Telegram Bot ကို တည်ဆောက်ခြင်း
+    # Build Telegram Bot
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     start_handler = CommandHandler('start', start)
@@ -74,4 +75,7 @@ if __name__ == '__main__':
     app.add_handler(message_handler)
 
     print("Bot is running...")
-    app.run_polling()
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == '__main__':
+    main()
